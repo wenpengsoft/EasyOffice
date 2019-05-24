@@ -1,10 +1,14 @@
+[English](https://github.com/holdengong/EasyOffice/wiki/README-English)
+
+[更新日志](https://github.com/holdengong/EasyOffice/wiki/EasyOffice%E6%9B%B4%E6%96%B0%E6%97%A5%E5%BF%97)
+
 # 简介
 Excel和Word操作在开发过程中经常需要使用，这类工作不涉及到核心业务，但又往往不可缺少。以往的开发方式在业务代码中直接引入NPOI、Aspose或者其他第三方库，工作繁琐，耗时多，扩展性差——比如基础库由NPOI修改为EPPlus，意味着业务代码需要全部修改。由于工作需要，我在之前版本的基础上，封装了OfficeService，目的是最大化节省导入导出这种非核心功能开发时间，专注于业务实现，并且业务端与底层基础组件完全解耦，即业务端完全不需要知道底层使用的是什么基础库，使得重构代价大大降低。
 
 EasyOffice提供了
-- Excel导入：通过对模板类标记特性自动校验数据（后期计划支持FluentApi，即传参决定校验行为），并将有效数据转换为指定类型，业务端只在拿到正确和错误数据后决定如何处理；
-- Excel导出：通过对模板类标记特性自动渲染样式（后期计划支持FluentApi，即传参决定导出行为）；
-- Word根据模板生成：支持使用文本和图片替换，占位符只需定义模板类，制作Word模板，一行代码导出docx文档（后期计划支持转换为pdf）；
+- Excel导入：通过对模板类标记特性自动校验数据，并将有效数据转换为指定类型，业务端只在拿到正确和错误数据后决定如何处理；
+- Excel导出：通过对模板类标记特性自动渲染样式；
+- Word根据模板生成：支持使用文本和图片替换，占位符只需定义模板类，制作Word模板，一行代码导出docx文档；
 - Word根据Table母版生成：只需定义模板类，制作表格模板，传入数据，服务会根据数据条数自动复制表格母版，并填充数据；
 - Word从空白创建等功能：特别复杂的Word导出任务，支持从空白创建；
 
@@ -12,12 +16,27 @@ EasyOffice底层库目前使用NPOI,因此是完全免费的。
 通过IExcelImportProvider等Provider接口实现了底层库与实现的解耦，后期如果需要切换比如Excel导入的基础库为EPPlus，只需要提供IExcelImportProvider接口的EPPlus实现，并且修改依赖注入代码即可。
 。
 
+# Nuget
+
+```
+//核心包
+Install-Package EasyOffice
+
+//如果需要使用转PDF功能，不需要转PDF的不要加这个包，比较大
+Install-Package EasyOffice.Extensions
+```
+==IMPORTANT==
+
+如果通过nuget使用EasyOffice.Extensions,需要手动将libwkhtmltox.dll，libwkhtmltox.so
+这两个文件手动拷贝到自己的项目根目录下，即与csproj项目工程文件同级，不然会报错。
+
+
 # 依赖注入
 支持.net core自带依赖注入
 
 ```c
 // 注入Office基础服务
-services.AddOffice(new OfficeOptions());
+services.AddEasyOffice(new OfficeOptions());
 ```
 
 ---
@@ -136,7 +155,7 @@ services.AddOffice(new OfficeOptions());
     {
         Data = list,
         DataRowStartIndex = 1, //数据行起始索引，默认1
-        ExcelType = Bayantu.Extensions.Office.Enums.ExcelTypeEnum.XLS,//导出Excel类型，默认xls
+        ExportType = XLSX, 默认导出Excel类型，默认xlsx
         HeaderRowIndex = 0, //表头行索引，默认0
         SheetName = "sheet1" //页签名称，默认sheet1
     });
@@ -144,44 +163,28 @@ services.AddOffice(new OfficeOptions());
     File.WriteAllBytes(@"c:\test.xls", bytes);
 ```
 
+### 性能测试
+通过ExcelOption中的ExportType参数，可以调整导出类型。
+默认正常XLSX导出
+XLS:可导出XLS
+FastXLSX: 快速导出XLSX，无样式
+CSV: 导出CSV文件
 
+**100万**条数据,每行10列,无任何样式
+- XLSX:0:02:12.287
+- FastXLSX: 0:01:05.309
+- CSV: 0:00:08.692
+
+**10万**条数据,每行10列,无任何样式
+- XLSX: 0:00:13.228
+- FastXLSX: 0:00:07.011
+- CSV:  0:00:01.069
+
+**1万**条数据,每行10列,无任何样式
+- XLSX: 0:00:02.062
+- FastXLSX: 0:00:00.923
+- CSV:  0:00:00.302
 ---
-
-# IExcelImportSolutionService - Excel导入解决方案服务(与前端控件配套的完整解决方案)
-
-首先定义模板类，参考通用Excel导入
-
-```
-   //获取默认导入模板
-    var templateBytes = await _excelImportSolutionService.GetImportTemplateAsync<DemoTemplateDTO>();
-
-    //获取导入配置
-    var importConfig = await _excelImportSolutionService.GetImportConfigAsync<DemoTemplateDTO>("uploadUrl","templateUrl");
-
-    //获取预览数据
-    var previewData = await _excelImportSolutionService.GetFileHeadersAndRowsAsync<DemoTemplateDTO>("fileUrl");
-
-    //导入
-    var importOption = new ImportOption()
-    {
-        FileUrl = "fileUrl",
-        ValidateMode = ValidateModeEnum.Continue
-    };
-    object importSetData = new object(); //前端传过来的映射数据
-    var importResult = await _excelImportSolutionService.ImportAsync<DemoTemplateDTO>
-        (importOption
-        , importSetData
-        , BusinessAction //业务方法委托
-        , CustomValidate //自定义校验委托
-        );
-
-    //获取导入错误消息
-    var errorMsg = await _excelImportSolutionService.ExportErrorMsgAsync(importResult.Tag);
-```
-
-
----
-
 
 # IWordExportService - Word通用导出服务
 ## CreateFromTemplateAsync - 根据模板生成Word
@@ -270,62 +273,15 @@ File.WriteAllBytes(@"c:\file.docx", word.WordBytes);
 
 ## CreateWordAsync - 从空白生成word
 
+CreateWordAsync方法接收IWordElement（实现类：Table,Paragraph）
+可以从空白创建表格和段落 
+
 ```
   [Fact]
         public async Task 导出所有日程()
         {
             //准备数据
-            var date1 = new ScheduleDate()
-            {
-                DateTimeStr = "2019年5月5日 星期八",
-                Addresses = new List<Address>()
-            };
-
-            var address1 = new Address()
-            {
-                Name = "会场一",
-                Categories = new List<Category>()
-            };
-
-            var cate1 = new Category()
-            {
-                Name = "分类1",
-                Schedules = new List<Schedule>()
-            };
-
-            var schedule1 = new Schedule()
-            {
-                Name = "日程1",
-                TimeString = "上午9：00 - 上午12：00",
-                Speakers = new List<Speaker>()
-            };
-            var schedule2 = new Schedule()
-            {
-                Name = "日程2",
-                TimeString = "下午13：00 - 下午14：00",
-                Speakers = new List<Speaker>()
-            };
-
-            var speaker1 = new Speaker()
-            {
-                Name = "张三",
-                Position = "总经理"
-            };
-            var speaker2 = new Speaker()
-            {
-                Name = "李四",
-                Position = "副总经理"
-            };
-
-            schedule1.Speakers.Add(speaker1);
-            schedule1.Speakers.Add(speaker2);
-            cate1.Schedules.Add(schedule1);
-            cate1.Schedules.Add(schedule2);
-            address1.Categories.Add(cate1);
-            date1.Addresses.Add(address1);
-
-            var dates = new List<ScheduleDate>() { date1,date1,date1 };
-
+            .................
             var tables = new List<Table>();
 
             //新建一个表格
@@ -366,100 +322,29 @@ File.WriteAllBytes(@"c:\file.docx", word.WordBytes);
                     }
                 });
                 table.Rows.Add(rowDate);
-
-                //会场
-                foreach (var addr in date.Addresses)
-                {
-                    //分类
-                    foreach (var cate in addr.Categories)
-                    {
-                        var rowCate = new TableRow()
-                        {
-                            Cells = new List<TableCell>()
-                        };
-
-                        //会场名称
-                        rowCate.Cells.Add(new TableCell()
-                        {
-                            Paragraphs = new List<Paragraph>{ new Paragraph()
-                            {
-                                Run = new Run()
-                                {
-                                    Text = addr.Name,
-                                }
-                            }
-                            }
-                        });
-
-                        rowCate.Cells.Add(new TableCell()
-                        {
-                            Paragraphs = new List<Paragraph>(){ new Paragraph()
-                            {
-                                Run = new Run()
-                                {
-                                    Text = cate.Name,
-                                }
-                            }
-                            }
-                        });
-                        table.Rows.Add(rowCate);
-
-                        //日程
-                        foreach (var sche in cate.Schedules)
-                        {
-                            var rowSche = new TableRow()
-                            {
-                                Cells = new List<TableCell>()
-                            };
-
-                            var scheCell = new TableCell()
-                            {
-                                Paragraphs = new List<Paragraph>()
-                                {
-                                    new Paragraph()
-                                    {
-                                         Run = new Run()
-                                         {
-                                              Text = sche.Name
-                                         }
-                                    },
-                                    {
-                                    new Paragraph()
-                                    {
-                                        Run = new Run()
-                                        {
-                                            Text = sche.TimeString
-                                        }
-                                    }
-                                    }
-                                }
-                            };
-
-                            foreach (var speaker in sche.Speakers)
-                            {
-                                scheCell.Paragraphs.Add(new Paragraph()
-                                {
-                                    Run = new Run()
-                                    {
-                                        Text = $"{speaker.Position}:{speaker.Name}"
-                                    }
-                                });
-                            }
-
-                            rowSche.Cells.Add(scheCell);
-
-                            table.Rows.Add(rowSche);
-                        }
-                    }
-                }
-            }
-
+                
             tables.Add(table);
 
             var word = await _wordExportService.CreateWordAsync(tables);
 
             File.WriteAllBytes(fileUrl, word.WordBytes);
         }
+```
+
+#  扩展功能 - Extensions
+## IWordConverter Word转换器
+支持docx文件转换为html，或者pdf。底层库使用OpenXml和DinkToPdf，开源免费。如果你们公司没有Aspose.Word的Lisence，这是个可以考虑的选择。
+
+
+```
+step1: Startup注入
+serviceCollection.AddEasyOfficeExtensions();
+
+step2:
+构造函数注入IWordConverter _wordConverter
+
+step3:调用
+var pdfBytes = _wordConverter.ConvertToPDF(docxBytes, "text");
 ```
 
 

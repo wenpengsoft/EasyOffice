@@ -5,7 +5,7 @@ using EasyOffice.Services;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 
-namespace Bayantu.Extensions.DependencyInjection
+namespace EasyOffice
 {
     /// <summary>
     /// Office基础库依赖注入
@@ -13,12 +13,12 @@ namespace Bayantu.Extensions.DependencyInjection
     public static class OfficeServiceCollectionExtensions
     {
 
-        public static void AddOffice(this IServiceCollection services)
+        public static void AddEasyOffice(this IServiceCollection services)
         {
-            services.AddOffice(new OfficeOptions());
+            services.AddEasyOffice(new OfficeOptions());
         }
 
-        public static void AddOffice(this IServiceCollection services, OfficeOptions options)
+        public static void AddEasyOffice(this IServiceCollection services, OfficeOptions options)
         {
             services.AddTransient<IExcelImportService, ExcelImportService>();
             services.AddTransient<IExcelExportService, ExcelExportService>();
